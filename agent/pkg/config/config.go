@@ -2,13 +2,16 @@ package config
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"os"
+
+	"gopkg.in/yaml.v3"
 )
 
+type Container struct{}
+
 type Config struct {
-	// Agent ID is the unique ID of the agent
-	AgentID string `yaml:"agent_id"`
+	// API Key is the key to use when sending data to the backend
+	APIKey string `yaml:"api_key"`
 
 	// Backend is the endpoint to send data to
 	// Can also be "stdout" to print to stdout
@@ -18,9 +21,12 @@ type Config struct {
 	// Only used if backend is "api"
 	APIEndpoint string `yaml:"api_endpoint"`
 
-	// PollInterval is the interval to poll for new data
+	// UpdateFrequency is the interval to poll for new data
 	// The value is in seconds, minimum 2 seconds
-	PollInterval int `yaml:"poll_interval"`
+	UpdateFrequency int `yaml:"update_frequency"`
+
+	// Containers is a list of containers to apply health checks to
+	Containers []Container `yaml:"containers"`
 }
 
 func Read(path string) (*Config, error) {
@@ -41,8 +47,8 @@ func Read(path string) (*Config, error) {
 	}
 
 	// Validate the config
-	if cfg.PollInterval < 2 {
-		return nil, fmt.Errorf("poll interval must be at least 2 seconds")
+	if cfg.UpdateFrequency < 2 {
+		return nil, fmt.Errorf("update frequency must be at least 2 seconds")
 	}
 	if cfg.Backend == "" {
 		return nil, fmt.Errorf("backend is required, use stdout to print to stdout")

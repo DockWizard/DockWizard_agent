@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/dockwizard/dockwizard/agent/pkg/config"
-	"github.com/dockwizard/dockwizard/agent/pkg/data"
 	"io"
-	"log"
 	"net/http"
 	"time"
+
+	"github.com/dockwizard/dockwizard/agent/pkg/config"
+	"github.com/dockwizard/dockwizard/agent/pkg/data"
 )
 
 type API struct {
@@ -19,16 +19,19 @@ type API struct {
 }
 
 type AgentMetadata struct {
-	ContainerID   string `json:"container_id"`
-	ContainerName string `json:"container_name"`
+	ContainerID    string `json:"container_id"`
+	ContainerName  string `json:"container_name"`
+	ContainerImage string `json:"container_image"`
 }
 
 type AgentData struct {
-	CPU              int `json:"cpu"`
-	MemoryPercentage int `json:"memory_perc"`
-	MemoryTotal      int `json:"memory_tot"`
-	NetIO            int `json:"net_io"`
-	BlockIO          int `json:"block_io"`
+	CPU              float64 `json:"cpu"`
+	MemoryPercentage float64 `json:"memory_perc"`
+	MemoryTotal      int     `json:"memory_tot"`
+	TotalRx          int     `json:"total_rx"`
+	TotalTx          int     `json:"total_tx"`
+	IoRead           int     `json:"io_read"`
+	IoWrite          int     `json:"io_write"`
 }
 
 type AgentObject struct {
@@ -38,8 +41,7 @@ type AgentObject struct {
 }
 
 type AgentObjectList struct {
-	AgentID string         `json:"agent_id"`
-	Data    []*AgentObject `json:"data"`
+	Data []*AgentObject `json:"data"`
 }
 
 func New(endpoint string, config *config.Config) *API {
@@ -59,22 +61,24 @@ func (a *API) SendData(metrics *data.Metrics) error {
 		list = append(list, &AgentObject{
 			Timestamp: time.Now(),
 			Metadata: &AgentMetadata{
-				ContainerID:   container.ID,
-				ContainerName: container.Name,
+				ContainerID:    container.ID,
+				ContainerName:  container.Name,
+				ContainerImage: container.Image,
 			},
 			Data: &AgentData{
-				CPU:              int(container.CPUUsage),
-				MemoryPercentage: container.MemoryUsage,
-				MemoryTotal:      0,
-				NetIO:            0,
-				BlockIO:          0,
+				CPU:              container.CPUUsage,
+				MemoryTotal:      container.MemoryUsage,
+				MemoryPercentage: container.MemoryUsagePercentage,
+				TotalRx:          container.NetworkIORead,
+				TotalTx:          container.NetworkIOWrite,
+				IoRead:           container.BlockIORead,
+				IoWrite:          container.BlockIOWrite,
 			},
 		})
 	}
 
 	agentObjectList := &AgentObjectList{
-		AgentID: a.config.AgentID,
-		Data:    list,
+		Data: list,
 	}
 
 	jsonData, err := json.Marshal(agentObjectList)
@@ -86,6 +90,7 @@ func (a *API) SendData(metrics *data.Metrics) error {
 	if err != nil {
 		return err
 	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", a.config.APIKey))
 	res, err := a.client.Do(req)
 	if err != nil {
 		return err
@@ -100,6 +105,5 @@ func (a *API) SendData(metrics *data.Metrics) error {
 		return fmt.Errorf("response: %s", string(bts))
 	}
 
-	log.Printf("response: %s", string(bts))
 	return nil
 }
