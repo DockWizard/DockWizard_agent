@@ -2,8 +2,9 @@ package stdout
 
 import (
 	"encoding/json"
-	"github.com/dockwizard/dockwizard/agent/pkg/data"
 	"os"
+
+	"github.com/dockwizard/dockwizard_agent/agent/pkg/data"
 )
 
 type Stdout struct{}

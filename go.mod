@@ -1,4 +1,4 @@
-module github.com/dockwizard/dockwizard
+module github.com/dockwizard/dockwizard_agent
 
 go 1.19
 

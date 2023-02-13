@@ -9,10 +9,10 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"github.com/dockwizard/dockwizard/agent/pkg/backend"
-	"github.com/dockwizard/dockwizard/agent/pkg/config"
-	"github.com/dockwizard/dockwizard/agent/pkg/data"
-	"github.com/dockwizard/dockwizard/agent/pkg/dockerstats"
+	"github.com/dockwizard/dockwizard_agent/agent/pkg/backend"
+	"github.com/dockwizard/dockwizard_agent/agent/pkg/config"
+	"github.com/dockwizard/dockwizard_agent/agent/pkg/data"
+	"github.com/dockwizard/dockwizard_agent/agent/pkg/dockerstats"
 	"github.com/sirupsen/logrus"
 )
 

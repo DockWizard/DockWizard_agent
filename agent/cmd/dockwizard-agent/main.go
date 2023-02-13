@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/dockwizard/dockwizard/agent/pkg/config"
+	"github.com/dockwizard/dockwizard_agent/agent/pkg/config"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
