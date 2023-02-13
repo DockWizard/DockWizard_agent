@@ -1,7 +1,7 @@
 package backend
 
 import (
-	"github.com/dockwizard/dockwizard/agent/pkg/data"
+	"github.com/dockwizard/dockwizard_agent/agent/pkg/data"
 )
 
 type Backend interface {

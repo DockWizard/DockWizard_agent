@@ -2,16 +2,18 @@ package agent
 
 import (
 	"context"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
-	"github.com/dockwizard/dockwizard/agent/pkg/backend"
-	"github.com/dockwizard/dockwizard/agent/pkg/config"
-	"github.com/dockwizard/dockwizard/agent/pkg/data"
-	"github.com/dockwizard/dockwizard/agent/pkg/dockerstats"
-	"github.com/sirupsen/logrus"
 	"io"
+	"math"
 	"strings"
 	"time"
+
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
+	"github.com/dockwizard/dockwizard_agent/agent/pkg/backend"
+	"github.com/dockwizard/dockwizard_agent/agent/pkg/config"
+	"github.com/dockwizard/dockwizard_agent/agent/pkg/data"
+	"github.com/dockwizard/dockwizard_agent/agent/pkg/dockerstats"
+	"github.com/sirupsen/logrus"
 )
 
 type Agent struct {
@@ -69,12 +71,21 @@ func (a *Agent) getDockerContainerMetrics() ([]*data.ContainerMetrics, error) {
 			return nil, err
 		}
 
+		rx, tx := calculateNetwork(parsedStats.Networks)
+		read, write := calculateBlockIO(parsedStats.BlkioStats)
+
 		ret = append(ret, &data.ContainerMetrics{
-			ID:          container.ID,
-			Name:        strings.TrimPrefix(container.Names[0], "/"),
-			CPUUsage:    parsedStats.CpuUsagePercentage(),
-			MemoryUsage: parsedStats.UsedMemory(),
-			State:       container.State,
+			ID:                    container.ID,
+			Name:                  strings.TrimPrefix(container.Names[0], "/"),
+			Image:                 container.Image,
+			CPUUsage:              math.Round(parsedStats.CpuUsagePercentage()*1000) / 1000,
+			MemoryUsage:           parsedStats.UsedMemory(),
+			MemoryUsagePercentage: math.Round(parsedStats.MemoryUsagePercentage()*1000) / 1000,
+			State:                 container.State,
+			NetworkIORead:         int(rx),
+			NetworkIOWrite:        int(tx),
+			BlockIORead:           int(read),
+			BlockIOWrite:          int(write),
 		})
 	}
 
@@ -82,7 +93,7 @@ func (a *Agent) getDockerContainerMetrics() ([]*data.ContainerMetrics, error) {
 }
 
 func (a *Agent) sleep() {
-	time.Sleep(time.Duration(a.Config.PollInterval) * time.Second)
+	time.Sleep(time.Duration(a.Config.UpdateFrequency) * time.Second)
 }
 
 func (a *Agent) Run() {
@@ -115,4 +126,32 @@ func (a *Agent) Run() {
 	if err != nil {
 		logrus.Errorf("failed to close docker client: %v", err)
 	}
+}
+
+// From: https://github.com/docker/cli/blob/c1733165159c08101adb0e1f120c7181533550ef/cli/command/container/stats_helpers.go#LL217-L225C2
+func calculateNetwork(network map[string]dockerstats.Network) (float64, float64) {
+	var rx, tx float64
+
+	for _, v := range network {
+		rx += float64(v.RxBytes)
+		tx += float64(v.TxBytes)
+	}
+	return rx, tx
+}
+
+// From: https://github.com/docker/cli/blob/c1733165159c08101adb0e1f120c7181533550ef/cli/command/container/stats_helpers.go#LL201-L215C2
+func calculateBlockIO(blkio types.BlkioStats) (uint64, uint64) {
+	var blkRead, blkWrite uint64
+	for _, bioEntry := range blkio.IoServiceBytesRecursive {
+		if len(bioEntry.Op) == 0 {
+			continue
+		}
+		switch bioEntry.Op[0] {
+		case 'r', 'R':
+			blkRead = blkRead + bioEntry.Value
+		case 'w', 'W':
+			blkWrite = blkWrite + bioEntry.Value
+		}
+	}
+	return blkRead, blkWrite
 }

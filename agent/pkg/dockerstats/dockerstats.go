@@ -3,21 +3,23 @@ package dockerstats
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/docker/docker/api/types"
 )
 
 type DockerStats struct {
-	Read        time.Time   `json:"read,omitempty"`
-	PidsStats   PidsStats   `json:"pids_stats,omitempty"`
-	Networks    Networks    `json:"networks,omitempty"`
-	MemoryStats MemoryStats `json:"memory_stats,omitempty"`
-	BlkioStats  BlkioStats  `json:"blkio_stats,omitempty"`
-	CPUStats    CPUStats    `json:"cpu_stats,omitempty"`
-	PrecpuStats PrecpuStats `json:"precpu_stats,omitempty"`
+	Read        time.Time          `json:"read,omitempty"`
+	PidsStats   PidsStats          `json:"pids_stats,omitempty"`
+	Networks    map[string]Network `json:"networks,omitempty"`
+	MemoryStats MemoryStats        `json:"memory_stats,omitempty"`
+	BlkioStats  types.BlkioStats   `json:"blkio_stats,omitempty"`
+	CPUStats    CPUStats           `json:"cpu_stats,omitempty"`
+	PrecpuStats PrecpuStats        `json:"precpu_stats,omitempty"`
 }
 type PidsStats struct {
 	Current int `json:"current,omitempty"`
 }
-type Eth0 struct {
+type Network struct {
 	RxBytes   int `json:"rx_bytes,omitempty"`
 	RxDropped int `json:"rx_dropped,omitempty"`
 	RxErrors  int `json:"rx_errors,omitempty"`
@@ -26,20 +28,6 @@ type Eth0 struct {
 	TxDropped int `json:"tx_dropped,omitempty"`
 	TxErrors  int `json:"tx_errors,omitempty"`
 	TxPackets int `json:"tx_packets,omitempty"`
-}
-type Eth5 struct {
-	RxBytes   int `json:"rx_bytes,omitempty"`
-	RxDropped int `json:"rx_dropped,omitempty"`
-	RxErrors  int `json:"rx_errors,omitempty"`
-	RxPackets int `json:"rx_packets,omitempty"`
-	TxBytes   int `json:"tx_bytes,omitempty"`
-	TxDropped int `json:"tx_dropped,omitempty"`
-	TxErrors  int `json:"tx_errors,omitempty"`
-	TxPackets int `json:"tx_packets,omitempty"`
-}
-type Networks struct {
-	Eth0 Eth0 `json:"eth0,omitempty"`
-	Eth5 Eth5 `json:"eth5,omitempty"`
 }
 type Stats struct {
 	TotalPgmajfault         int `json:"total_pgmajfault,omitempty"`
@@ -78,8 +66,6 @@ type MemoryStats struct {
 	Usage    int   `json:"usage,omitempty"`
 	Failcnt  int   `json:"failcnt,omitempty"`
 	Limit    int   `json:"limit,omitempty"`
-}
-type BlkioStats struct {
 }
 type CPUUsage struct {
 	PercpuUsage       []int `json:"percpu_usage,omitempty"`

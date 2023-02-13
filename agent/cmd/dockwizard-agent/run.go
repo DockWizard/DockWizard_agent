@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/dockwizard/dockwizard/agent/pkg/agent"
-	"github.com/dockwizard/dockwizard/agent/pkg/backend"
-	"github.com/dockwizard/dockwizard/agent/pkg/backend/api"
-	"github.com/dockwizard/dockwizard/agent/pkg/backend/stdout"
+	"github.com/dockwizard/dockwizard_agent/agent/pkg/agent"
+	"github.com/dockwizard/dockwizard_agent/agent/pkg/backend"
+	"github.com/dockwizard/dockwizard_agent/agent/pkg/backend/api"
+	"github.com/dockwizard/dockwizard_agent/agent/pkg/backend/stdout"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
