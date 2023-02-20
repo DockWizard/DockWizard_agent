@@ -54,5 +54,15 @@ func Read(path string) (*Config, error) {
 		return nil, fmt.Errorf("backend is required, use stdout to print to stdout")
 	}
 
+	// Verify that API endpoint and API key are set if backend is "api"
+	if cfg.Backend == "api" {
+		if cfg.APIEndpoint == "" {
+			return nil, fmt.Errorf("api endpoint is required when backend is api")
+		}
+		if cfg.APIKey == "" {
+			return nil, fmt.Errorf("api key is required when backend is api")
+		}
+	}
+
 	return &cfg, nil
 }

@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"io"
+	"log"
 	"math"
 	"strings"
 	"time"
@@ -19,45 +20,34 @@ import (
 type Agent struct {
 	Config *config.Config
 
-	ctx     context.Context
-	cancel  func()
-	log     *logrus.Logger
 	buffer  []*data.Metrics
-	docker  *client.Client
+	docker  client.APIClient
 	backend backend.Backend
 }
 
-func New(c *config.Config, b backend.Backend) (*Agent, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		cancel()
-		return nil, err
-	}
-
+func New(c *config.Config, b backend.Backend, cli client.APIClient) *Agent {
 	return &Agent{
 		Config:  c,
-		ctx:     ctx,
-		cancel:  cancel,
-		log:     logrus.New(),
 		buffer:  []*data.Metrics{},
 		docker:  cli,
 		backend: b,
-	}, nil
+	}
 }
 
 func (a *Agent) getDockerContainerMetrics() ([]*data.ContainerMetrics, error) {
 	var ret []*data.ContainerMetrics
 
+	ctx := context.TODO()
+
 	// Get the metrics
-	allContainers, err := a.docker.ContainerList(a.ctx, types.ContainerListOptions{})
+	allContainers, err := a.docker.ContainerList(ctx, types.ContainerListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	// Get the metrics for each container
 	for _, container := range allContainers {
-		stats, err := a.docker.ContainerStatsOneShot(a.ctx, container.ID)
+		stats, err := a.docker.ContainerStatsOneShot(ctx, container.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -71,8 +61,8 @@ func (a *Agent) getDockerContainerMetrics() ([]*data.ContainerMetrics, error) {
 			return nil, err
 		}
 
-		rx, tx := calculateNetwork(parsedStats.Networks)
-		read, write := calculateBlockIO(parsedStats.BlkioStats)
+		rx, tx := parsedStats.NetworkStats()
+		read, write := parsedStats.DiskStats()
 
 		ret = append(ret, &data.ContainerMetrics{
 			ID:                    container.ID,
@@ -96,19 +86,19 @@ func (a *Agent) sleep() {
 	time.Sleep(time.Duration(a.Config.UpdateFrequency) * time.Second)
 }
 
-func (a *Agent) Run() {
+func (a *Agent) Run(ctx context.Context) {
 	for {
 		// Sleep for the poll interval
 		a.sleep()
 
 		// If canceled then break
-		if a.ctx.Err() == context.Canceled {
+		if ctx.Err() == context.Canceled {
 			break
 		}
 
 		containerMetrics, err := a.getDockerContainerMetrics()
 		if err != nil {
-			a.log.Errorf("error getting container metrics: %v", err)
+			log.Printf("error getting container metrics: %v", err)
 			continue
 		}
 
@@ -118,7 +108,7 @@ func (a *Agent) Run() {
 		}
 		err = a.backend.SendData(metrics)
 		if err != nil {
-			a.log.Errorf("could not send metrics to backend: %v", err)
+			log.Printf("could not send metrics to backend: %v", err)
 		}
 	}
 
@@ -126,32 +116,4 @@ func (a *Agent) Run() {
 	if err != nil {
 		logrus.Errorf("failed to close docker client: %v", err)
 	}
-}
-
-// From: https://github.com/docker/cli/blob/c1733165159c08101adb0e1f120c7181533550ef/cli/command/container/stats_helpers.go#LL217-L225C2
-func calculateNetwork(network map[string]dockerstats.Network) (float64, float64) {
-	var rx, tx float64
-
-	for _, v := range network {
-		rx += float64(v.RxBytes)
-		tx += float64(v.TxBytes)
-	}
-	return rx, tx
-}
-
-// From: https://github.com/docker/cli/blob/c1733165159c08101adb0e1f120c7181533550ef/cli/command/container/stats_helpers.go#LL201-L215C2
-func calculateBlockIO(blkio types.BlkioStats) (uint64, uint64) {
-	var blkRead, blkWrite uint64
-	for _, bioEntry := range blkio.IoServiceBytesRecursive {
-		if len(bioEntry.Op) == 0 {
-			continue
-		}
-		switch bioEntry.Op[0] {
-		case 'r', 'R':
-			blkRead = blkRead + bioEntry.Value
-		case 'w', 'W':
-			blkWrite = blkWrite + bioEntry.Value
-		}
-	}
-	return blkRead, blkWrite
 }

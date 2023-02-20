@@ -136,3 +136,31 @@ func (d *DockerStats) NumberCpus() int {
 func (d *DockerStats) CpuUsagePercentage() float64 {
 	return (float64(d.CpuDelta()) / float64(d.SystemCpuDelta())) * float64(d.NumberCpus()) * 100.0
 }
+
+// From: https://github.com/docker/cli/blob/c1733165159c08101adb0e1f120c7181533550ef/cli/command/container/stats_helpers.go#LL217-L225C2
+func (d *DockerStats) NetworkStats() (float64, float64) {
+	var rx, tx float64
+
+	for _, v := range d.Networks {
+		rx += float64(v.RxBytes)
+		tx += float64(v.TxBytes)
+	}
+	return rx, tx
+}
+
+// From: https://github.com/docker/cli/blob/c1733165159c08101adb0e1f120c7181533550ef/cli/command/container/stats_helpers.go#LL201-L215C2
+func (d *DockerStats) DiskStats() (uint64, uint64) {
+	var blkRead, blkWrite uint64
+	for _, bioEntry := range d.BlkioStats.IoServiceBytesRecursive {
+		if len(bioEntry.Op) == 0 {
+			continue
+		}
+		switch bioEntry.Op[0] {
+		case 'r', 'R':
+			blkRead = blkRead + bioEntry.Value
+		case 'w', 'W':
+			blkWrite = blkWrite + bioEntry.Value
+		}
+	}
+	return blkRead, blkWrite
+}

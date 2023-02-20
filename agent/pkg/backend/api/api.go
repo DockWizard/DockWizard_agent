@@ -12,7 +12,7 @@ import (
 	"github.com/dockwizard/dockwizard_agent/agent/pkg/data"
 )
 
-type API struct {
+type api struct {
 	config   *config.Config
 	client   *http.Client
 	endpoint string
@@ -22,6 +22,7 @@ type AgentMetadata struct {
 	ContainerID    string `json:"container_id"`
 	ContainerName  string `json:"container_name"`
 	ContainerImage string `json:"container_image"`
+	ContainerState string `json:"container_state"`
 }
 
 type AgentData struct {
@@ -44,18 +45,21 @@ type AgentObjectList struct {
 	Data []*AgentObject `json:"data"`
 }
 
-func New(endpoint string, config *config.Config) *API {
-	client := &http.Client{
-		Timeout: 25 * time.Second,
+func New(endpoint string, config *config.Config, client *http.Client) *api {
+	if client == nil {
+		client = &http.Client{
+			Timeout: 25 * time.Second,
+		}
 	}
-	return &API{
+
+	return &api{
 		config:   config,
 		client:   client,
 		endpoint: endpoint,
 	}
 }
 
-func (a *API) SendData(metrics *data.Metrics) error {
+func (a *api) SendData(metrics *data.Metrics) error {
 	var list []*AgentObject
 	for _, container := range metrics.Container {
 		list = append(list, &AgentObject{
@@ -64,6 +68,7 @@ func (a *API) SendData(metrics *data.Metrics) error {
 				ContainerID:    container.ID,
 				ContainerName:  container.Name,
 				ContainerImage: container.Image,
+				ContainerState: container.State,
 			},
 			Data: &AgentData{
 				CPU:              container.CPUUsage,

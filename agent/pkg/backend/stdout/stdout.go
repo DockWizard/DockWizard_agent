@@ -7,8 +7,16 @@ import (
 	"github.com/dockwizard/dockwizard_agent/agent/pkg/data"
 )
 
-type Stdout struct{}
+type stdout struct {
+	stdout *os.File
+}
 
-func (s *Stdout) SendData(metrics *data.Metrics) error {
-	return json.NewEncoder(os.Stdout).Encode(metrics)
+func New() *stdout {
+	return &stdout{
+		stdout: os.Stdout,
+	}
+}
+
+func (s *stdout) SendData(metrics *data.Metrics) error {
+	return json.NewEncoder(s.stdout).Encode(metrics)
 }
